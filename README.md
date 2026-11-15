@@ -105,7 +105,7 @@ document.addEventListener('sticky-atc:added', (event) => {
 
 ## License
 
-MIT. See [LICENSE](LICENSE). The built-in icons in the trust badges bar use paths from [Feather Icons](https://feathericons.com), also MIT licensed.
+Source-available, not open source. You may read and evaluate this code, but commercial or production use requires a written licence from Usama Afzall. See `LICENSE` and https://usama.websiteprism.com/contact.
 
 ## Need this customized?
 
