@@ -1,0 +1,310 @@
+{% comment %}
+  Sticky Add to Cart
+  ------------------
+  A bar fixed to the bottom of product pages. It slides in once the main "Add to cart"
+  button has scrolled above the viewport, and slides away when the button is back in view.
+
+  - Variant <select> (hidden input for single-variant products), live price and sold-out state.
+  - Adds to cart through the Ajax Cart API (cart/add.js); no page reload unless you choose one.
+  - While hidden the bar is `inert`, so it is skipped by keyboard and screen reader users.
+  - Fires a bubbling `sticky-atc:added` event so a theme can open its cart drawer.
+{% endcomment %}
+
+{%- if product -%}
+  {%- liquid
+    assign current_variant = product.selected_or_first_available_variant
+    assign image = current_variant.featured_image | default: product.featured_image
+  -%}
+
+  {%- style -%}
+    .sticky-atc-{{ section.id }} {
+      position: fixed;
+      inset: auto 0 0 0;
+      z-index: 99;
+      display: block;
+      background: {{ section.settings.color_background }};
+      color: {{ section.settings.color_text }};
+      box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.12);
+      padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
+      transform: translateY(100%);
+      visibility: hidden;
+      transition: transform 0.25s ease, visibility 0.25s;
+    }
+    .sticky-atc-{{ section.id }}.is-visible { transform: translateY(0); visibility: visible; }
+    .sticky-atc-{{ section.id }} .sticky-atc__inner {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .sticky-atc-{{ section.id }} .sticky-atc__image { flex: 0 0 auto; width: 48px; height: auto; border-radius: 4px; }
+    .sticky-atc-{{ section.id }} .sticky-atc__info { flex: 1 1 auto; min-width: 0; }
+    .sticky-atc-{{ section.id }} .sticky-atc__title {
+      margin: 0;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .sticky-atc-{{ section.id }} .sticky-atc__price { margin: 0; font-size: 0.9em; }
+    .sticky-atc-{{ section.id }} .sticky-atc__price s { opacity: 0.6; margin-left: 0.35rem; }
+    .sticky-atc-{{ section.id }} .sticky-atc__form { display: flex; align-items: center; gap: 0.5rem; flex: 0 0 auto; }
+    .sticky-atc-{{ section.id }} .sticky-atc__select {
+      max-width: 180px;
+      min-height: 44px;
+      padding: 0 0.5rem;
+      font: inherit;
+      color: inherit;
+      background: transparent;
+      border: 1px solid currentColor;
+      border-radius: 4px;
+    }
+    .sticky-atc-{{ section.id }} .sticky-atc__button {
+      min-height: 44px; /* comfortable touch target */
+      padding: 0 1.25rem;
+      font: inherit;
+      font-weight: 600;
+      color: {{ section.settings.color_button_text }};
+      background: {{ section.settings.color_button }};
+      border: 0;
+      border-radius: 4px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .sticky-atc-{{ section.id }} .sticky-atc__button[disabled] { opacity: 0.5; cursor: not-allowed; }
+    .sticky-atc-{{ section.id }} .sticky-atc__status { margin: 0.4rem auto 0; max-width: 1200px; font-size: 0.85em; text-align: right; }
+    .sticky-atc-{{ section.id }} .sticky-atc__status:empty { display: none; }
+    .sticky-atc-{{ section.id }} .sticky-atc__label {
+      position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+    }
+    @media screen and (max-width: 749px) {
+      .sticky-atc-{{ section.id }}.sticky-atc--desktop { display: none; }
+      .sticky-atc-{{ section.id }} .sticky-atc__info { display: none; } /* keep the bar to one row */
+      .sticky-atc-{{ section.id }} .sticky-atc__form { flex: 1 1 auto; }
+      .sticky-atc-{{ section.id }} .sticky-atc__select { flex: 1 1 50%; max-width: none; min-width: 0; }
+      .sticky-atc-{{ section.id }} .sticky-atc__button { flex: 1 1 50%; }
+    }
+    @media screen and (min-width: 750px) {
+      .sticky-atc-{{ section.id }}.sticky-atc--mobile { display: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .sticky-atc-{{ section.id }} { transition: none; }
+    }
+  {%- endstyle -%}
+
+  <sticky-add-to-cart
+    class="sticky-atc-{{ section.id }} sticky-atc--{{ section.settings.show_on }}"
+    role="region"
+    aria-label="{{ section.settings.button_label | escape }}: {{ product.title | escape }}"
+    data-section-id="{{ section.id }}"
+    data-trigger="{{ section.settings.trigger_selector | escape }}"
+    data-cart-add-url="{{ routes.cart_add_url }}.js"
+    data-cart-url="{{ routes.cart_url }}"
+    data-after-add="{{ section.settings.after_add }}"
+    data-label-add="{{ section.settings.button_label | escape }}"
+    data-label-sold-out="{{ section.settings.sold_out_label | escape }}"
+    data-label-added="{{ section.settings.added_label | escape }}"
+    inert
+  >
+    <div class="sticky-atc__inner">
+      {%- if section.settings.show_image and image != blank -%}
+        {%- assign image_height = 48 | divided_by: image.aspect_ratio | round -%}
+        {{ image | image_url: width: 96 | image_tag: loading: 'lazy', width: 48, height: image_height, alt: '', class: 'sticky-atc__image' }}
+      {%- endif -%}
+      <div class="sticky-atc__info">
+        <p class="sticky-atc__title">{{ product.title | escape }}</p>
+        <p class="sticky-atc__price">
+          <span data-price>{{ current_variant.price | money }}</span>
+          <s data-compare-price {% unless current_variant.compare_at_price > current_variant.price %}hidden{% endunless %}>
+            {{- current_variant.compare_at_price | money -}}
+          </s>
+        </p>
+      </div>
+      <form class="sticky-atc__form" method="post" action="{{ routes.cart_add_url }}" data-form>
+        {%- if product.has_only_default_variant -%}
+          <input type="hidden" name="id" value="{{ current_variant.id }}">
+        {%- else -%}
+          <label class="sticky-atc__label" for="StickyAtcSelect-{{ section.id }}">{{ product.title | escape }}</label>
+          <select class="sticky-atc__select" id="StickyAtcSelect-{{ section.id }}" name="id">
+            {%- for variant in product.variants -%}
+              {%- comment -%} Prices are pre-formatted here so the script never has to format money. {%- endcomment -%}
+              <option
+                value="{{ variant.id }}"
+                data-available="{{ variant.available }}"
+                data-price="{{ variant.price | money | strip_html | escape }}"
+                data-compare-price="{% if variant.compare_at_price > variant.price %}{{ variant.compare_at_price | money | strip_html | escape }}{% endif %}"
+                {% if variant == current_variant %}selected{% endif %}
+              >
+                {{- variant.title | escape }}{% unless variant.available %} - {{ section.settings.sold_out_label | escape }}{% endunless -%}
+              </option>
+            {%- endfor -%}
+          </select>
+        {%- endif -%}
+        <button type="submit" class="sticky-atc__button" {% unless current_variant.available %}disabled{% endunless %}>
+          <span data-button-label>
+            {%- if current_variant.available -%}{{ section.settings.button_label | escape }}{%- else -%}{{ section.settings.sold_out_label | escape }}{%- endif -%}
+          </span>
+        </button>
+      </form>
+    </div>
+    <p class="sticky-atc__status" role="status" data-status></p>
+  </sticky-add-to-cart>
+
+  <script>
+    // Defined once, even if the section is re-rendered in the theme editor.
+    if (!customElements.get('sticky-add-to-cart')) {
+      customElements.define('sticky-add-to-cart', class StickyAddToCart extends HTMLElement {
+        connectedCallback() {
+          this.form = this.querySelector('[data-form]');
+          this.idInput = this.querySelector('[name="id"]');
+          this.select = this.querySelector('select[name="id"]'); // null for single-variant products
+          this.button = this.querySelector('button[type="submit"]');
+          this.buttonLabel = this.querySelector('[data-button-label]');
+          this.status = this.querySelector('[data-status]');
+          this.trigger = this.findTrigger();
+
+          this.form.addEventListener('submit', (event) => this.onSubmit(event));
+          if (this.select) this.select.addEventListener('change', () => this.render());
+
+          if (this.trigger && 'IntersectionObserver' in window) {
+            // Show only when the button is above the viewport, not while it is still below the fold.
+            this.observer = new IntersectionObserver(([entry]) => {
+              this.toggle(!entry.isIntersecting && entry.boundingClientRect.bottom < 0);
+            });
+            this.observer.observe(this.trigger);
+          } else {
+            this.toggle(true); // no main button found: keep the bar available
+          }
+
+          // Theme editor: reveal the bar when the merchant selects this section.
+          if (window.Shopify && window.Shopify.designMode) {
+            this.onEditorSelect = (event) => {
+              if (event.detail.sectionId === this.dataset.sectionId) this.toggle(true);
+            };
+            document.addEventListener('shopify:section:select', this.onEditorSelect);
+          }
+        }
+
+        disconnectedCallback() {
+          if (this.observer) this.observer.disconnect();
+          if (this.onEditorSelect) document.removeEventListener('shopify:section:select', this.onEditorSelect);
+        }
+
+        // Merchant-defined selector first, then Dawn's button, then any product form submit button.
+        findTrigger() {
+          const selectors = [this.dataset.trigger, '.product-form__submit', 'form[action*="/cart/add"] [type="submit"]'];
+          for (const selector of selectors) {
+            if (!selector) continue;
+            try {
+              const match = Array.from(document.querySelectorAll(selector)).find((el) => !this.contains(el));
+              if (match) return match;
+            } catch (error) { /* invalid selector typed in the editor: try the next one */ }
+          }
+          return null;
+        }
+
+        toggle(show) {
+          if (show) this.syncWithMainForm();
+          this.classList.toggle('is-visible', show);
+          this.toggleAttribute('inert', !show);
+        }
+
+        // Mirror the variant chosen in the main product form each time the bar appears.
+        syncWithMainForm() {
+          const mainForm = this.trigger && this.trigger.closest('form');
+          const mainId = mainForm && mainForm.querySelector('[name="id"]');
+          if (!this.select || !mainId) return;
+          if (Array.from(this.select.options).some((option) => option.value === mainId.value)) {
+            this.select.value = mainId.value;
+            this.render();
+          }
+        }
+
+        // Update price and button state for the selected variant.
+        render() {
+          const option = this.select.selectedOptions[0];
+          const available = option.dataset.available === 'true';
+          const compare = this.querySelector('[data-compare-price]');
+          this.querySelector('[data-price]').textContent = option.dataset.price;
+          compare.textContent = option.dataset.comparePrice;
+          compare.hidden = !option.dataset.comparePrice;
+          this.button.disabled = !available;
+          this.buttonLabel.textContent = available ? this.dataset.labelAdd : this.dataset.labelSoldOut;
+          this.status.textContent = '';
+        }
+
+        async onSubmit(event) {
+          event.preventDefault();
+          if (this.button.disabled) return;
+          this.button.disabled = true;
+          this.button.setAttribute('aria-busy', 'true');
+          this.status.textContent = '';
+          try {
+            const response = await fetch(this.dataset.cartAddUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+              body: JSON.stringify({
+                items: [{ id: Number(this.idInput.value), quantity: 1 }],
+                sections: ['cart-icon-bubble'], // Dawn's cart count; ignored by themes without it
+              }),
+            });
+            const data = await response.json();
+            // Shopify answers 422 with a readable description, e.g. when stock runs out.
+            if (!response.ok) throw new Error(data.description || data.message || 'Could not add to cart.');
+
+            if (this.dataset.afterAdd === 'cart') {
+              window.location.assign(this.dataset.cartUrl);
+              return;
+            }
+            this.updateCartBubble(data.sections);
+            this.status.textContent = this.dataset.labelAdded;
+            this.dispatchEvent(new CustomEvent('sticky-atc:added', { bubbles: true, detail: data }));
+          } catch (error) {
+            this.status.textContent = error.message;
+          } finally {
+            this.button.removeAttribute('aria-busy');
+            this.button.disabled = this.select ? this.select.selectedOptions[0].dataset.available !== 'true' : false;
+          }
+        }
+
+        // Dawn-style themes: swap in the freshly rendered cart icon so the item count updates.
+        updateCartBubble(sections) {
+          const bubble = document.getElementById('cart-icon-bubble');
+          const html = sections && sections['cart-icon-bubble'];
+          if (!bubble || !html) return;
+          const fresh = new DOMParser().parseFromString(html, 'text/html').querySelector('.shopify-section');
+          if (fresh) bubble.innerHTML = fresh.innerHTML;
+        }
+      });
+    }
+  </script>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Sticky add to cart",
+  "tag": "section",
+  "class": "section-sticky-add-to-cart",
+  "enabled_on": { "templates": ["product"] },
+  "settings": [
+    { "type": "select", "id": "show_on", "label": "Show on", "default": "all",
+      "options": [{ "value": "all", "label": "All devices" }, { "value": "mobile", "label": "Mobile only" }, { "value": "desktop", "label": "Desktop only" }] },
+    { "type": "checkbox", "id": "show_image", "label": "Show product image", "default": true },
+    { "type": "select", "id": "after_add", "label": "After adding to cart", "default": "stay",
+      "options": [{ "value": "stay", "label": "Stay on page and confirm" }, { "value": "cart", "label": "Go to cart page" }] },
+    { "type": "text", "id": "trigger_selector", "label": "Main add to cart button selector", "default": ".product-form__submit",
+      "info": "CSS selector of the theme's main buy button. The bar appears once this button scrolls out of view." },
+    { "type": "header", "content": "Labels" },
+    { "type": "text", "id": "button_label", "label": "Button label", "default": "Add to cart" },
+    { "type": "text", "id": "sold_out_label", "label": "Sold out label", "default": "Sold out" },
+    { "type": "text", "id": "added_label", "label": "Confirmation message", "default": "Added to cart" },
+    { "type": "header", "content": "Colors" },
+    { "type": "color", "id": "color_background", "label": "Bar background", "default": "#ffffff" },
+    { "type": "color", "id": "color_text", "label": "Bar text", "default": "#1a1a1a" },
+    { "type": "color", "id": "color_button", "label": "Button background", "default": "#1a1a1a" },
+    { "type": "color", "id": "color_button_text", "label": "Button text", "default": "#ffffff" }
+  ],
+  "presets": [{ "name": "Sticky add to cart" }]
+}
+{% endschema %}

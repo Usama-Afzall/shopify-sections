@@ -1,0 +1,231 @@
+{% comment %}
+  Trust Badges Bar
+  ----------------
+  A responsive row of "icon + text" trust items (free shipping, secure checkout, etc.).
+  Each item is a block, so merchants can add, remove and reorder them in the theme editor.
+
+  - Built-in icons are inline SVG (no extra requests); a custom image can override any icon.
+  - All CSS is scoped to this section instance, so the section can be used several times per page.
+  - No JavaScript.
+
+  Built-in icon paths are from Feather Icons (MIT): https://feathericons.com
+{% endcomment %}
+
+{%- liquid
+  assign icon_size = section.settings.icon_size
+  assign icon_size_2x = icon_size | times: 2
+-%}
+
+{%- style -%}
+  .trust-bar-{{ section.id }} {
+    --tb-columns: {{ section.settings.columns_desktop }};
+    --tb-icon-size: {{ icon_size }}px;
+    background: {{ section.settings.color_background }};
+    color: {{ section.settings.color_text }};
+    padding: {{ section.settings.padding_top }}px 1.5rem {{ section.settings.padding_bottom }}px;
+  }
+  .trust-bar-{{ section.id }} .trust-bar__list {
+    display: grid;
+    grid-template-columns: repeat({{ section.settings.columns_mobile }}, minmax(0, 1fr));
+    gap: 1.5rem 1rem;
+    max-width: {{ section.settings.max_width }}px;
+    margin: 0 auto;
+    padding: 0;
+    list-style: none;
+  }
+  .trust-bar-{{ section.id }} .trust-bar__item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .trust-bar-{{ section.id }} .trust-bar__list--stacked .trust-bar__item {
+    flex-direction: column;
+    text-align: center;
+  }
+  .trust-bar-{{ section.id }} .trust-bar__icon {
+    flex: 0 0 auto;
+    display: inline-flex;
+    color: {{ section.settings.color_icon }};
+  }
+  .trust-bar-{{ section.id }} .trust-bar__icon svg,
+  .trust-bar-{{ section.id }} .trust-bar__icon img {
+    display: block;
+    width: var(--tb-icon-size);
+    height: auto;
+  }
+  .trust-bar-{{ section.id }} .trust-bar__title {
+    margin: 0;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+  .trust-bar-{{ section.id }} .trust-bar__text {
+    margin: 0.15rem 0 0;
+    font-size: 0.875em;
+    line-height: 1.4;
+    opacity: 0.8;
+  }
+  @media screen and (min-width: 750px) {
+    .trust-bar-{{ section.id }} .trust-bar__list {
+      grid-template-columns: repeat(var(--tb-columns), minmax(0, 1fr));
+    }
+  }
+{%- endstyle -%}
+
+{%- if section.blocks.size > 0 -%}
+  <div class="trust-bar-{{ section.id }}">
+    {%- comment -%} role="list" keeps list semantics in Safari/VoiceOver when list-style is none. {%- endcomment -%}
+    <ul
+      class="trust-bar__list{% if section.settings.layout == 'stacked' %} trust-bar__list--stacked{% endif %}"
+      role="list"
+      aria-label="{{ section.settings.accessible_label | escape }}"
+    >
+      {%- for block in section.blocks -%}
+        <li class="trust-bar__item" {{ block.shopify_attributes }}>
+          {%- comment -%} Icons are decorative: the title next to them carries the meaning. {%- endcomment -%}
+          <span class="trust-bar__icon" aria-hidden="true">
+            {%- if block.settings.image != blank -%}
+              {%- assign image_height = icon_size | divided_by: block.settings.image.aspect_ratio | round -%}
+              {{
+                block.settings.image
+                | image_url: width: icon_size_2x
+                | image_tag: loading: 'lazy', width: icon_size, height: image_height, alt: ''
+              }}
+            {%- else -%}
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                width="{{ icon_size }}"
+                height="{{ icon_size }}"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                focusable="false"
+              >
+                {%- case block.settings.icon -%}
+                  {%- when 'truck' -%}
+                    <rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
+                  {%- when 'shield' -%}
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                  {%- when 'lock' -%}
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                  {%- when 'returns' -%}
+                    <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+                  {%- when 'chat' -%}
+                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+                  {%- when 'star' -%}
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                  {%- when 'card' -%}
+                    <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>
+                  {%- else -%}
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+                {%- endcase -%}
+              </svg>
+            {%- endif -%}
+          </span>
+          <div class="trust-bar__content">
+            {%- if block.settings.title != blank -%}
+              <p class="trust-bar__title">{{ block.settings.title | escape }}</p>
+            {%- endif -%}
+            {%- if block.settings.text != blank -%}
+              <p class="trust-bar__text">{{ block.settings.text | escape }}</p>
+            {%- endif -%}
+          </div>
+        </li>
+      {%- endfor -%}
+    </ul>
+  </div>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Trust badges bar",
+  "tag": "section",
+  "class": "section-trust-badges-bar",
+  "max_blocks": 8,
+  "settings": [
+    { "type": "header", "content": "Layout" },
+    {
+      "type": "select",
+      "id": "layout",
+      "label": "Item layout",
+      "options": [
+        { "value": "inline", "label": "Icon beside text" },
+        { "value": "stacked", "label": "Icon above text" }
+      ],
+      "default": "inline"
+    },
+    { "type": "range", "id": "columns_desktop", "label": "Columns on desktop", "min": 2, "max": 6, "step": 1, "default": 4 },
+    {
+      "type": "select",
+      "id": "columns_mobile",
+      "label": "Columns on mobile",
+      "options": [
+        { "value": "1", "label": "1 column" },
+        { "value": "2", "label": "2 columns" }
+      ],
+      "default": "2"
+    },
+    { "type": "range", "id": "icon_size", "label": "Icon size", "min": 20, "max": 64, "step": 2, "unit": "px", "default": 32 },
+    { "type": "range", "id": "max_width", "label": "Content max width", "min": 600, "max": 1600, "step": 50, "unit": "px", "default": 1200 },
+    { "type": "range", "id": "padding_top", "label": "Top padding", "min": 0, "max": 80, "step": 4, "unit": "px", "default": 24 },
+    { "type": "range", "id": "padding_bottom", "label": "Bottom padding", "min": 0, "max": 80, "step": 4, "unit": "px", "default": 24 },
+    { "type": "header", "content": "Colors" },
+    { "type": "color", "id": "color_background", "label": "Background", "default": "#f6f6f4" },
+    { "type": "color", "id": "color_text", "label": "Text", "default": "#1a1a1a" },
+    { "type": "color", "id": "color_icon", "label": "Icons", "default": "#1a1a1a" },
+    { "type": "header", "content": "Accessibility" },
+    {
+      "type": "text",
+      "id": "accessible_label",
+      "label": "Screen reader label",
+      "default": "Why shop with us",
+      "info": "Announced by screen readers. Not shown on the page."
+    }
+  ],
+  "blocks": [
+    {
+      "type": "badge",
+      "name": "Trust item",
+      "settings": [
+        {
+          "type": "select",
+          "id": "icon",
+          "label": "Icon",
+          "options": [
+            { "value": "truck", "label": "Delivery truck" },
+            { "value": "shield", "label": "Shield" },
+            { "value": "lock", "label": "Padlock" },
+            { "value": "returns", "label": "Returns arrow" },
+            { "value": "chat", "label": "Chat bubble" },
+            { "value": "star", "label": "Star" },
+            { "value": "card", "label": "Payment card" },
+            { "value": "check", "label": "Check mark" }
+          ],
+          "default": "check"
+        },
+        {
+          "type": "image_picker",
+          "id": "image",
+          "label": "Custom icon image",
+          "info": "Optional. Replaces the built-in icon. SVG or transparent PNG works best."
+        },
+        { "type": "text", "id": "title", "label": "Title", "default": "Trust item" },
+        { "type": "text", "id": "text", "label": "Supporting text" }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Trust badges bar",
+      "blocks": [
+        { "type": "badge", "settings": { "icon": "truck", "title": "Fast shipping", "text": "Tracked delivery on every order" } },
+        { "type": "badge", "settings": { "icon": "returns", "title": "Easy returns", "text": "Simple, no-fuss return policy" } },
+        { "type": "badge", "settings": { "icon": "lock", "title": "Secure checkout", "text": "Encrypted payment processing" } },
+        { "type": "badge", "settings": { "icon": "chat", "title": "Friendly support", "text": "Real people, quick replies" } }
+      ]
+    }
+  ]
+}
+{% endschema %}
